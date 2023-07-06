@@ -1,8 +1,10 @@
+import sys
+
 import torch
 import random
 import numpy as np
 from collections import deque
-from game import SnakeGameAI, Direction, Point
+from game import SnakeGameAI, Direction, Point, BLOCK_SIZE
 from model import Linear_QNet, QTrainer
 from helper import plot
 
@@ -12,26 +14,39 @@ LR = 0.001
 
 class Agent:
 
-    def __init__(self):
+    def __init__(self, mode = 'run', name = 'model'):
         self.n_games = 0
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
+        self.name = name
         self.model = Linear_QNet(11, 256, 3)
-        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+
+        self.mode = mode
+        if mode == 'train':
+            self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+        elif mode == 'run':
+            self.model.load(name + '.pth')
+
+        self.score = 0
+        self.record = 0
+        self.game_over = False
+        self.head = None
+        self.snake = []
+        self.direction = Direction.RIGHT
 
 
     def get_state(self, game):
-        head = game.snake[0]
+        head = self.head
         point_l = Point(head.x - 20, head.y)
         point_r = Point(head.x + 20, head.y)
         point_u = Point(head.x, head.y - 20)
         point_d = Point(head.x, head.y + 20)
         
-        dir_l = game.direction == Direction.LEFT
-        dir_r = game.direction == Direction.RIGHT
-        dir_u = game.direction == Direction.UP
-        dir_d = game.direction == Direction.DOWN
+        dir_l = self.direction == Direction.LEFT
+        dir_r = self.direction == Direction.RIGHT
+        dir_u = self.direction == Direction.UP
+        dir_d = self.direction == Direction.DOWN
 
         state = [
             # Danger straight
@@ -59,11 +74,11 @@ class Agent:
             dir_d,
             
             # Food location 
-            game.food.x < game.head.x,  # food left
-            game.food.x > game.head.x,  # food right
-            game.food.y < game.head.y,  # food up
-            game.food.y > game.head.y  # food down
-            ]
+            game.food.x < self.head.x,  # food left
+            game.food.x > self.head.x,  # food right
+            game.food.y < self.head.y,  # food up
+            game.food.y > self.head.y   # food down
+        ]
 
         return np.array(state, dtype=int)
 
@@ -78,8 +93,7 @@ class Agent:
 
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, dones)
-        #for state, action, reward, nexrt_state, done in mini_sample:
-        #    self.trainer.train_step(state, action, reward, next_state, done)
+
 
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
@@ -99,49 +113,131 @@ class Agent:
 
         return final_move
 
+    def move(self, game):
 
-def train():
-    plot_scores = []
-    plot_mean_scores = []
-    total_score = 0
-    record = 0
-    agent = Agent()
-    game = SnakeGameAI()
-    while True:
-        # get old state
-        state_old = agent.get_state(game)
+        # print(self.name + ": Moving...")
+        if self.game_over:
+            # print(self.name + ": Aborting move because I'm dead.")
+            return
 
-        # get move
-        final_move = agent.get_action(state_old)
+        state_old = self.get_state(game)
 
-        # perform move and get new state
-        reward, done, score = game.play_step(final_move)
-        state_new = agent.get_state(game)
+        final_move = self.get_action(state_old)
 
-        # train short memory
-        agent.train_short_memory(state_old, final_move, reward, state_new, done)
+        # [straight, right, left]
 
-        # remember
-        agent.remember(state_old, final_move, reward, state_new, done)
+        clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
+        idx = clock_wise.index(self.direction)
 
-        if done:
-            # train long memory, plot result
-            game.reset()
-            agent.n_games += 1
-            agent.train_long_memory()
+        if np.array_equal(final_move, [1, 0, 0]):
+            new_dir = clock_wise[idx] # no change
+        elif np.array_equal(final_move, [0, 1, 0]):
+            next_idx = (idx + 1) % 4
+            new_dir = clock_wise[next_idx] # right turn r -> d -> l -> u
+        else: # [0, 0, 1]
+            next_idx = (idx - 1) % 4
+            new_dir = clock_wise[next_idx] # left turn r -> u -> l -> d
 
-            if score > record:
-                record = score
-                agent.model.save()
+        self.direction = new_dir
+        # print(self.name + ": I choose " + str(self.direction))
 
-            print('Game', agent.n_games, 'Score', score, 'Record:', record)
+        x = self.head.x
+        y = self.head.y
+        if self.direction == Direction.RIGHT:
+            x += BLOCK_SIZE
+        elif self.direction == Direction.LEFT:
+            x -= BLOCK_SIZE
+        elif self.direction == Direction.DOWN:
+            y += BLOCK_SIZE
+        elif self.direction == Direction.UP:
+            y -= BLOCK_SIZE
 
-            plot_scores.append(score)
-            total_score += score
-            mean_score = total_score / agent.n_games
-            plot_mean_scores.append(mean_score)
-            plot(plot_scores, plot_mean_scores)
+        self.head = Point(x, y)
+
+        self.snake.insert(0, self.head)
+
+        reward = 0
+
+        if game.is_collision(self.head) or game.frame_iteration > 100 * len(self.snake):
+            self.game_over = True
+            reward = -10
+        else:
+            if self.head == game.food:
+                self.score += 1
+                reward = 10
+                game.place_food()
+            else:
+                self.snake.pop()
+
+        if self.mode == 'train':
+            state_new = self.get_state(game)
+
+            self.train_short_memory(state_old, final_move, reward, state_new, self.game_over)
+
+            self.remember(state_old, final_move, reward, state_new, self.game_over)
+
+        if self.game_over:
+            self.n_games += 1
+            if self.mode == 'train':
+                self.train_long_memory()
+
+            if self.score > self.record:
+                self.record = self.score
+                if self.mode == 'train':
+                    self.model.save(self.name + '.pth')
+
+        # print(self.name + ": Finished move.")
 
 
-if __name__ == '__main__':
-    train()
+#
+# def train(model_name):
+#     plot_scores = []
+#     plot_mean_scores = []
+#     total_score = 0
+#     record = 0
+#     agent = Agent()
+#     game = SnakeGameAI()
+#     while True:
+#         # get old state
+#         state_old = agent.get_state(game)
+#
+#         # get move
+#         final_move = agent.get_action(state_old)
+#
+#         # perform move and get new state
+#         reward, done, score = game.play_step(final_move)
+#         state_new = agent.get_state(game)
+#
+#         # train short memory
+#         agent.train_short_memory(state_old, final_move, reward, state_new, done)
+#
+#         # remember
+#         agent.remember(state_old, final_move, reward, state_new, done)
+#
+#         if done:
+#             # train long memory, plot result
+#             game.reset()
+#             agent.n_games += 1
+#             agent.train_long_memory()
+#
+#             if score > record:
+#                 record = score
+#                 agent.model.save(model_name + '.pth')
+#
+#             print('Game', agent.n_games, 'Score', score, 'Record:', record)
+#
+#             plot_scores.append(score)
+#             total_score += score
+#             mean_score = total_score / agent.n_games
+#             plot_mean_scores.append(mean_score)
+#             plot(plot_scores, plot_mean_scores)
+#
+#
+# if __name__ == '__main__':
+#
+#     model = 'model'
+#
+#     if len(sys.argv) == 2:
+#         model = sys.argv[1]
+#
+#     train(model)
