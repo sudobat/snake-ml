@@ -3,3 +3,4 @@ numpy
 pygame
 matplotlib
 IPython
+importlib

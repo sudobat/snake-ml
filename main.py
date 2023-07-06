@@ -11,26 +11,34 @@ def play(mode):
     total_score = 0
     record = 0
     agents = {
-        'model': Agent(mode, 'model'),
-        'agent2': Agent(mode, 'agent2'),
+        'model': Agent(mode, ai_details={
+            'name': 'model',
+            'epsilon': 0,
+            'discount_rate': 0.9,
+            'learning_rate': 0.001,
+        }),
+        'agent2': Agent(mode, ai_details={
+            'name': 'agent2',
+            'epsilon': 0,
+            'discount_rate': 0.9,
+            'learning_rate': 0.001,
+        }),
+        'mamba': Agent(mode, ai_details={
+            'name': 'mamba',
+            'epsilon': 0,
+            'discount_rate': 0.9,
+            'learning_rate': 0.001,
+        }),
+        'cobra': Agent(mode, ai_details={
+            'name': 'cobra',
+            'epsilon': 0,
+            'discount_rate': 0.9,
+            'learning_rate': 0.001,
+        }),
     }
     game = SnakeGameAI(640, 480, agents)
     while True:
-        # # get old state
-        # state_old = agent.get_state(game)
-        #
-        # # get move
-        # final_move = agent.get_action(state_old)
-
-        # perform move and get new state
         game.play_step()
-        # state_new = agent.get_state(game)
-        #
-        # # train short memory
-        # agent.train_short_memory(state_old, final_move, reward, state_new, done)
-        #
-        # # remember
-        # agent.remember(state_old, final_move, reward, state_new, done)
 
         all_lost = True
         for agent in game.agents.values():
