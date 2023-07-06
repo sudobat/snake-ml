@@ -11,35 +11,34 @@ def play(mode):
     total_score = 0
     record = 0
     agents = {
-        'model': Agent(mode, ai_details={
-            'name': 'model',
-            'epsilon': 0,
-            'discount_rate': 0.9,
-            'learning_rate': 0.001,
-        }),
-        'agent2': Agent(mode, ai_details={
-            'name': 'agent2',
-            'epsilon': 0,
-            'discount_rate': 0.9,
-            'learning_rate': 0.001,
-        }),
+        # 'anaconda': Agent(mode, ai_details={
+        #     'name': 'anaconda',
+        #     'discount_rate': 0.9,
+        #     'learning_rate': 0.001,
+        #     'batch_size': 1000,
+        # }),
+        # 'python': Agent(mode, ai_details={
+        #     'name': 'python',
+        #     'discount_rate': 0.99,
+        #     'learning_rate': 0.01,
+        #     'batch_size': 10000,
+        # }),
         'mamba': Agent(mode, ai_details={
             'name': 'mamba',
-            'epsilon': 0,
             'discount_rate': 0.9,
             'learning_rate': 0.001,
+            'batch_size': 10000,
         }),
-        'cobra': Agent(mode, ai_details={
-            'name': 'cobra',
-            'epsilon': 0,
-            'discount_rate': 0.9,
-            'learning_rate': 0.001,
-        }),
+        # 'cobra': Agent(mode, ai_details={
+        #     'name': 'cobra',
+        #     'discount_rate': 0.9,
+        #     'learning_rate': 0.001,
+        #     'batch_size': 1000,
+        # }),
     }
     game = SnakeGameAI(640, 480, agents)
     while True:
         game.play_step()
-
         all_lost = True
         for agent in game.agents.values():
             if not agent.game_over:

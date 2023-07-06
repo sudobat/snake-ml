@@ -31,7 +31,7 @@ PURPLE2 = (255, 255, 100)
 BLACK = (0, 0, 0)
 
 BLOCK_SIZE = 20
-SPEED = 80
+SPEED = 100
 
 
 class SnakeGameAI:
@@ -44,6 +44,7 @@ class SnakeGameAI:
         self.agents = agents
         self.food = None
         self.frame_iteration = 0
+        self.n_games = 0
         # init display
         self.display = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('Snake')
@@ -51,21 +52,44 @@ class SnakeGameAI:
         self.reset()
 
     def reset(self):
-        i = -2 * BLOCK_SIZE
+        i = 1
         for agent in self.agents.values():
             # init game state
-            agent.direction = Direction.RIGHT
+            if i == 1:
+                agent.direction = Direction.RIGHT
 
-            agent.head = Point(self.w / 2, self.h / 2 + i)
-            agent.snake = [agent.head,
-                           Point(agent.head.x - BLOCK_SIZE, agent.head.y),
-                           Point(agent.head.x - (2 * BLOCK_SIZE), agent.head.y)]
+                agent.head = Point(self.w / 4, self.h * 3 / 4)
+                agent.snake = [agent.head,
+                               Point(agent.head.x - BLOCK_SIZE, agent.head.y),
+                               Point(agent.head.x - 2 * BLOCK_SIZE, agent.head.y)]
+            elif i == 2:
+                agent.direction = Direction.LEFT
+
+                agent.head = Point(self.w * 3 / 4, self.h / 4)
+                agent.snake = [agent.head,
+                               Point(agent.head.x + BLOCK_SIZE, agent.head.y),
+                               Point(agent.head.x + 2 * BLOCK_SIZE, agent.head.y)]
+            elif i == 3:
+                agent.direction = Direction.UP
+
+                agent.head = Point(self.w * 3 / 4, self.h * 3 / 4)
+                agent.snake = [agent.head,
+                               Point(agent.head.x, agent.head.y + BLOCK_SIZE),
+                               Point(agent.head.x, agent.head.y + 2 * BLOCK_SIZE)]
+            elif i == 4:
+                agent.direction = Direction.DOWN
+
+                agent.head = Point(self.w / 4, self.h / 4)
+                agent.snake = [agent.head,
+                               Point(agent.head.x, agent.head.y - BLOCK_SIZE),
+                               Point(agent.head.x, agent.head.y - 2 * BLOCK_SIZE)]
 
             agent.game_over = False
             agent.score = 0
 
-            i += BLOCK_SIZE
+            i += 1
 
+        self.n_games += 1
         self.food = None
         self.frame_iteration = 0
         self.place_food()
@@ -133,6 +157,9 @@ class SnakeGameAI:
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 
         i = 0
+        text = font.render("Game: " + str(self.n_games), True, WHITE)
+        self.display.blit(text, [0, i])
+        i += BLOCK_SIZE
         for agent in self.agents.values():
             text = font.render(agent.name + " - Score: " + str(agent.score) + " - Record: " + str(agent.record), True,
                                WHITE)

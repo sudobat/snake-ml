@@ -10,8 +10,6 @@ from game import Direction, Point, BLOCK_SIZE
 from qtrainer import QTrainer
 
 MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.001
 
 class Agent:
 
@@ -22,6 +20,7 @@ class Agent:
         self.ai_details = ai_details
 
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft()
+        self.batch_size = ai_details.get('batch_size')
 
         self.epsilon = ai_details.get('epsilon')  # randomness
         self.gamma = ai_details.get('discount_rate')  # discount rate
@@ -51,10 +50,11 @@ class Agent:
 
     def get_state(self, game):
         head = self.head
-        point_l = Point(head.x - 20, head.y)
-        point_r = Point(head.x + 20, head.y)
-        point_u = Point(head.x, head.y - 20)
-        point_d = Point(head.x, head.y + 20)
+
+        point_l = Point(head.x - BLOCK_SIZE, head.y)
+        point_r = Point(head.x + BLOCK_SIZE, head.y)
+        point_u = Point(head.x, head.y - BLOCK_SIZE)
+        point_d = Point(head.x, head.y + BLOCK_SIZE)
 
         dir_l = self.direction == Direction.LEFT
         dir_r = self.direction == Direction.RIGHT
@@ -99,8 +99,8 @@ class Agent:
         self.memory.append((state, action, reward, next_state, done))  # popleft if MAX_MEMORY is reached
 
     def train_long_memory(self):
-        if len(self.memory) > BATCH_SIZE:
-            mini_sample = random.sample(self.memory, BATCH_SIZE)  # list of tuples
+        if len(self.memory) > self.batch_size:
+            mini_sample = random.sample(self.memory, self.batch_size)  # list of tuples
         else:
             mini_sample = self.memory
 
@@ -112,9 +112,10 @@ class Agent:
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
-        self.epsilon = 80 - self.n_games
         final_move = [0, 0, 0]
-        if random.randint(0, 200) < self.epsilon and self.mode == 'train':
+
+        self.epsilon = 30 - self.n_games
+        if random.randint(0, 100) < self.epsilon and self.mode == 'train':
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
