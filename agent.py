@@ -11,6 +11,7 @@ from qtrainer import QTrainer
 
 MAX_MEMORY = 100_000
 
+
 class Agent:
 
     def __init__(self, mode='run', ai_details=None):
@@ -29,7 +30,7 @@ class Agent:
         module = importlib.import_module('model.' + self.name)
         model_class = getattr(module, 'LinearQNet')
 
-        self.model = model_class(11, 3)
+        self.model = model_class(3)
 
         self.mode = mode
         if mode == 'train':
@@ -48,55 +49,10 @@ class Agent:
         self.snake = []
         self.direction = Direction.RIGHT
 
-    def get_state(self, game):
-        head = self.head
-
-        point_l = Point(head.x - BLOCK_SIZE, head.y)
-        point_r = Point(head.x + BLOCK_SIZE, head.y)
-        point_u = Point(head.x, head.y - BLOCK_SIZE)
-        point_d = Point(head.x, head.y + BLOCK_SIZE)
-
-        dir_l = self.direction == Direction.LEFT
-        dir_r = self.direction == Direction.RIGHT
-        dir_u = self.direction == Direction.UP
-        dir_d = self.direction == Direction.DOWN
-
-        state = [
-            # Danger straight
-            (dir_r and game.is_collision(point_r)) or
-            (dir_l and game.is_collision(point_l)) or
-            (dir_u and game.is_collision(point_u)) or
-            (dir_d and game.is_collision(point_d)),
-
-            # Danger right
-            (dir_u and game.is_collision(point_r)) or
-            (dir_d and game.is_collision(point_l)) or
-            (dir_l and game.is_collision(point_u)) or
-            (dir_r and game.is_collision(point_d)),
-
-            # Danger left
-            (dir_d and game.is_collision(point_r)) or
-            (dir_u and game.is_collision(point_l)) or
-            (dir_r and game.is_collision(point_u)) or
-            (dir_l and game.is_collision(point_d)),
-
-            # Move direction
-            dir_l,
-            dir_r,
-            dir_u,
-            dir_d,
-
-            # Food location 
-            game.food.x < self.head.x,  # food left
-            game.food.x > self.head.x,  # food right
-            game.food.y < self.head.y,  # food up
-            game.food.y > self.head.y  # food down
-        ]
-
-        return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))  # popleft if MAX_MEMORY is reached
+
 
     def train_long_memory(self):
         if len(self.memory) > self.batch_size:
@@ -107,15 +63,17 @@ class Agent:
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, dones)
 
+
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
+
 
     def get_action(self, state):
         # random moves: tradeoff exploration / exploitation
         final_move = [0, 0, 0]
 
-        self.epsilon = 30 - self.n_games
-        if random.randint(0, 100) < self.epsilon and self.mode == 'train':
+        self.epsilon = 100 - self.n_games / 10
+        if random.randint(0, 200) < self.epsilon and self.mode == 'train':
             move = random.randint(0, 2)
             final_move[move] = 1
         else:
@@ -126,11 +84,12 @@ class Agent:
 
         return final_move
 
+
     def move(self, game):
         if self.game_over:
             return
 
-        state_old = self.get_state(game)
+        state_old = self.model.get_state(self, game)
 
         final_move = self.get_action(state_old)
 
@@ -180,7 +139,7 @@ class Agent:
                 self.snake.pop()
 
         if self.mode == 'train':
-            state_new = self.get_state(game)
+            state_new = self.model.get_state(self, game)
 
             self.train_short_memory(state_old, final_move, reward, state_new, self.game_over)
 

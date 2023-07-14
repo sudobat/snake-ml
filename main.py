@@ -6,35 +6,13 @@ from helper import plot
 
 
 def play(mode):
-    plot_scores = []
-    plot_mean_scores = []
-    total_score = 0
-    record = 0
     agents = {
-        # 'anaconda': Agent(mode, ai_details={
-        #     'name': 'anaconda',
-        #     'discount_rate': 0.9,
-        #     'learning_rate': 0.001,
-        #     'batch_size': 1000,
-        # }),
-        # 'python': Agent(mode, ai_details={
-        #     'name': 'python',
-        #     'discount_rate': 0.99,
-        #     'learning_rate': 0.01,
-        #     'batch_size': 10000,
-        # }),
-        'mamba': Agent(mode, ai_details={
-            'name': 'mamba',
-            'discount_rate': 0.9,
-            'learning_rate': 0.001,
-            'batch_size': 10000,
+        'sneik': Agent(mode, ai_details={
+            'name': 'sneik',
+            'discount_rate': 0.99,
+            'learning_rate': 0.0001,
+            'batch_size': 100,
         }),
-        # 'cobra': Agent(mode, ai_details={
-        #     'name': 'cobra',
-        #     'discount_rate': 0.9,
-        #     'learning_rate': 0.001,
-        #     'batch_size': 1000,
-        # }),
     }
     game = SnakeGameAI(640, 480, agents)
     while True:
