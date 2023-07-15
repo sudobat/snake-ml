@@ -48,6 +48,7 @@ class Agent:
         self.head = None
         self.snake = []
         self.direction = Direction.RIGHT
+        self.turns_without_food = 0
 
 
     def remember(self, state, action, reward, next_state, done):
@@ -72,7 +73,7 @@ class Agent:
         # random moves: tradeoff exploration / exploitation
         final_move = [0, 0, 0]
 
-        self.epsilon = 100 - self.n_games / 10
+        self.epsilon = 100 - self.n_games
         if random.randint(0, 200) < self.epsilon and self.mode == 'train':
             move = random.randint(0, 2)
             final_move[move] = 1
@@ -126,17 +127,19 @@ class Agent:
 
         reward = 0
 
-        if game.is_collision(self.head) or game.frame_iteration > 100 * len(self.snake):
+        if game.is_collision(self.head) or self.turns_without_food >= 100:
             self.game_over = True
             reward = -10
             self.snake = []
         else:
             if self.head == game.food:
                 self.score += 1
+                self.turns_without_food = 0
                 reward = 10
                 game.place_food()
             else:
                 self.snake.pop()
+                self.turns_without_food += 1
 
         if self.mode == 'train':
             state_new = self.model.get_state(self, game)

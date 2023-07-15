@@ -86,6 +86,7 @@ class SnakeGameAI:
 
             agent.game_over = False
             agent.score = 0
+            agent.turns_without_food = 0
 
             i += 1
 
@@ -161,7 +162,7 @@ class SnakeGameAI:
         self.display.blit(text, [0, i])
         i += BLOCK_SIZE
         for agent in self.agents.values():
-            text = font.render(agent.name + " - Score: " + str(agent.score) + " - Record: " + str(agent.record), True,
+            text = font.render(agent.name + " - Hunger: " + str(agent.turns_without_food) + " - Score: " + str(agent.score) + " - Record: " + str(agent.record), True,
                                WHITE)
             self.display.blit(text, [0, i])
             i += BLOCK_SIZE
